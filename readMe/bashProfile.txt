@@ -1,0 +1,13 @@
+echo loading path… ~/.profile
+
+# for mpich
+export LD_LIBRARY_PATH=/opt/local/lib/mpich-mp/
+
+# MacPorts Installer addition on 2014-10-14_at_16:33:28: adding an appropriate PATH variable for use with MacPorts.
+export PATH="$HOME/local/bin:/opt/local/bin:/opt/local/sbin:$PATH"
+
+# For the python lib in neuron
+export PYTHONPATH=“:/opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib/python27.zip:/opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7:/opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/plat-darwin:/opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/plat-mac:/opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/plat-mac/lib-scriptpackages:/opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-tk:/opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-old:/opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/readline:/opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload:/opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages:$PYTHONPATH”
+
+# For nrniv etc..
+source ~/neuron/nrnenv

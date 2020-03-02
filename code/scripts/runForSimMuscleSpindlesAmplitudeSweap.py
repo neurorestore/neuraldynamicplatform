@@ -1,0 +1,375 @@
+import argparse
+import sys
+sys.path.append('../code')
+import subprocess
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import fnmatch
+import time
+import pickle
+from tools import general_tools as gt
+from tools import structures_tools as tls
+from tools import post_processing_tools as ppt
+from parameters import HumanParameters as hp
+from parameters import RatParameters as rp
+
+pathToResults = "../../results"
+
+def main():
+	""" This program launches a ForSimMuscleSpindles for different stimulation freqeuncies.
+	The results are then plotted in order to see the effect of the stimulation
+	frequency on the afferent firings.
+	The program doesn't have to be executed by MPI.
+	"""
+	parser = argparse.ArgumentParser(description="Run a ForSimMuscleSpindles simulation for different stimulation frequencies")
+	parser.add_argument("eesFrequency", help="ees frequency", type=float, choices=[gt.Range(0,1000)])
+	parser.add_argument("species", help="simulated species", choices=["rat","human"])
+	parser.add_argument("delay", help="delay of the fiber in ms",type=int,choices=[gt.Range(1,30)])
+	parser.add_argument("--phasicStim", help="Flag to use phasic stimualtion, tonic stimulation otherwise",action="store_true")
+	args = parser.parse_args()
+
+	toAddname = "_ampMod"
+	#Paramters initialization
+	if args.species == "human":
+		totSimTime = hp.get_tot_sim_time()
+		gaitCyclesFileName = hp.get_gait_cycles_file()
+		muscles = hp.get_muscles()
+		templateFile = hp.get_nn_template_file()
+		w1, w2, w3, w4 = hp.get_network_weights()
+
+		inputFileName = "ffs_d_"+str(args.delay)+"_w1_"+str(w1)+"_w2_"+str(w2)+"_w3_"+str(w3)+"_w4_"+str(w4)
+		inputFile = "generatedStructures/"+inputFileName+".txt"
+		tls.modify_network_structure(templateFile,inputFile,args.delay,[w1,w2,w3,w4])
+	elif args.species == "rat":
+		totSimTime = rp.get_tot_sim_time()
+		gaitCyclesFileName = rp.get_gait_cycles_file()
+		muscles = rp.get_muscles()
+		templateFile = rp.get_nn_template_file()
+		w1, w2 = rp.get_network_weights()
+
+		inputFileName = "ffs_d_"+str(args.delay)+"_w1_"+str(w1)+"_w2_"+str(w2)
+		inputFile = "generatedStructures/"+inputFileName+".txt"
+		tls.modify_network_structure(templateFile,inputFile,args.delay,[w1,w2])
+	else: raise(Exception("Unkown species"))
+
+	eesAmplitudes = ["1","235","242","250","259","270","282"]
+	nProc = 4
+	seed = "1"
+	if args.phasicStim: emgVsKinMod = "proportionalFloatData" #"proportional" #"sensory"
+
+	nSim = len(eesAmplitudes)
+	count=0.
+	percLastPrint=0.
+	printPeriod = 0.05
+
+	""" run simulations """
+	for i,eesAmplitude in enumerate(eesAmplitudes):
+		if eesAmplitude[0]=="%": eesAmplitudeName=eesAmplitude[1:]
+		else: eesAmplitudeName=eesAmplitude
+
+		if not args.phasicStim:
+			name = "Tonic_FFS_species_"+toAddname+inputFileName+args.species+"_muscles_"+"".join(muscles)+"_delay_"+str(args.delay)+"_amp_"+str(eesAmplitudeName)+"_freq_"+str(args.eesFrequency)
+			if args.species == "human":name += hp.get_dataset()
+			resultFile = gt.find("*"+name+".p",pathToResults)
+			if not resultFile:
+				program = ['mpiexec','-np',str(nProc),'python','./scripts/runForSimMuscleSpindles.py',\
+					str(args.eesFrequency),str(eesAmplitude),args.species,inputFile,name,"--simTime",str(totSimTime),"--seed",seed,"--noPlot"]
+		else:
+			name = "Phasic_"+emgVsKinMod+"_FFS_species_"+toAddname+inputFileName+args.species+"_muscles_"+"".join(muscles)+"_delay_"+str(args.delay)+"_amp_"+str(eesAmplitudeName)+"_freq_"+str(args.eesFrequency)
+			if args.species == "human":name += hp.get_dataset()
+			resultFile = gt.find("*"+name+"*.p",pathToResults)
+			print resultFile
+			if not resultFile:
+				program = ['mpiexec','-np',str(nProc),'python','./scripts/runForSimMuscleSpindlesStimModulation.py',\
+					str(args.eesFrequency),str(eesAmplitude),args.species,emgVsKinMod,inputFile,name,"--simTime",str(totSimTime),"--seed",seed,"--noPlot"]
+		if not resultFile: gt.run_subprocess(program)
+
+		count+=1
+		if count/nSim-percLastPrint>=printPeriod:
+			percLastPrint=count/nSim
+			print str(round(count/nSim*100))+"% of simulations performed..."
+
+
+
+
+	""" create plots """
+	errParams = dict(lw=0.5, capsize=1, capthick=0.5)
+	with open(gaitCyclesFileName, 'r') as pickle_file:
+		heelStrikes = pickle.load(pickle_file)
+		footOffs = pickle.load(pickle_file)
+
+
+	# Figure 5 plot all gait cycles- afferent and efferents
+	if not args.phasicStim: figName = time.strftime("/%Y_%m_%d_Tonic_FFS_species_"+toAddname+inputFileName+args.species+"_muscles_"+"".join(muscles)+"_delay_"+str(args.delay)+"_freq_"+str(args.eesFrequency)+"_firingRates.pdf")
+	else: figName = time.strftime("/%Y_%m_%d_Phasic_FFS_species_"+toAddname+inputFileName+args.species+"_muscles_"+"".join(muscles)+"_delay_"+str(args.delay)+"_freq_"+str(args.eesFrequency)+"_firingRates.pdf")
+	fig, ax = plt.subplots(2, 4,figsize=(16,9))
+	cmap = plt.get_cmap('autumn')
+	colors = cmap(np.linspace(0.1,0.9,len(eesAmplitudes)))
+
+	for i,eesAmplitude in enumerate(eesAmplitudes):
+		if eesAmplitude[0]=="%": eesAmplitudeName=eesAmplitude[1:]
+		else: eesAmplitudeName=eesAmplitude
+		if not args.phasicStim: name = "Tonic_FFS_species_"+toAddname+inputFileName+args.species+"_muscles_"+"".join(muscles)+"_delay_"+str(args.delay)+"_amp_"+str(eesAmplitudeName)+"_freq_"+str(args.eesFrequency)
+		else: name = "Phasic_"+emgVsKinMod+"_FFS_species_"+toAddname+inputFileName+args.species+"_muscles_"+"".join(muscles)+"_delay_"+str(args.delay)+"_amp_"+str(eesAmplitudeName)+"_freq_"+str(args.eesFrequency)
+		if args.species == "human":name += hp.get_dataset()
+
+		# get data
+		resultFile = gt.find("*"+name+".p",pathToResults)
+		if len(resultFile)>1: print "Warning: multiple result files found!!!"
+		with open(resultFile[0], 'r') as pickle_file:
+			estimatedEmg = pickle.load(pickle_file)
+			meanFr = pickle.load(pickle_file)
+
+		# get gait cycles
+		if not 'heelStrikeSamples' in locals():
+			nSamples = len(meanFr[muscles[0]]["Mn"])
+			dtMeanFr = float(totSimTime)/nSamples
+			heelStrikeSamples = [int(x) for x in heelStrikes*1000./dtMeanFr]
+			footOffSamples = [int(x) for x in footOffs*1000./dtMeanFr]
+			samples = range(nSamples)
+			stance = np.zeros(nSamples).astype(bool)
+			for strike,off in zip(heelStrikeSamples,footOffSamples):
+				if strike>nSamples: break
+				if off>nSamples:off=nSamples
+				stance[strike:off]=True
+
+		eesAmplitude = int(eesAmplitude)
+		for j,muscle in enumerate(muscles):
+			ax[j,0].plot(meanFr[muscle]['Iaf'],color=colors[i])
+			ax[j,0].fill_between(samples, 0, 200, where=stance, facecolor='#b0abab', alpha=0.25)
+			ax[j,1].plot(meanFr[muscle]['IaInt'],color=colors[i])
+			ax[j,1].fill_between(samples, 0, 200, where=stance, facecolor='#b0abab', alpha=0.25)
+			ax[j,2].plot(meanFr[muscle]['Mn'],color=colors[i])
+			ax[j,2].fill_between(samples, 0, 200, where=stance, facecolor='#b0abab', alpha=0.25)
+			ax[j,3].plot(estimatedEmg[muscle]['Mn'],color=colors[i])
+			ax[j,3].fill_between(samples, 0, 200, where=stance, facecolor='#b0abab', alpha=0.25)
+
+
+	for j,muscle in enumerate(muscles):
+		ax[j,0].set_ylim([0,200])
+		ax[j,0].set_title("Ia fibers firing rate - "+muscle)
+		ax[j,0].set_xlabel("Time (ms)")
+		ax[j,0].set_ylabel("Firing rate (Imp/s)")
+		ax[j,1].set_ylim([0,200])
+		ax[j,1].set_title("IaInt firing rate - "+muscle)
+		ax[j,1].set_xlabel("Time (ms)")
+		ax[j,1].set_ylabel("Firing rate (Imp/s)")
+		ax[j,2].set_ylim([0,200])
+		ax[j,2].set_title("Mn firing rate - "+muscle)
+		ax[j,2].set_xlabel("Time (ms)")
+		ax[j,2].set_ylabel("Firing rate (Imp/s)")
+		ax[j,3].set_ylim([0,200])
+		ax[j,3].set_title("EMG - "+muscle)
+		ax[j,3].set_xlabel("Time (ms)")
+		ax[j,3].set_ylabel("Emg amplitude (a.u.)")
+	plt.savefig(pathToResults+figName, format="pdf",transparent=True)
+
+
+	# Figure 5 plot gait cycles- afferent and efferents + stats
+	if args.species == "rat":
+		startGaitCycleN = 3
+		nCycles = 1
+	elif args.species == "human":
+		startGaitCycleN = 3
+		nCycles = 1
+
+	if not args.phasicStim: figName = time.strftime("/%Y_%m_%d_Tonic_FFS_species_"+toAddname+inputFileName+args.species+"_muscles_"+"".join(muscles)+"_delay_"+str(args.delay)+"_freq_"+str(args.eesFrequency)+"_single_firingRates.pdf")
+	else: figName = time.strftime("/%Y_%m_%d_Phasic_FFS_species_"+toAddname+inputFileName+args.species+"_muscles_"+"".join(muscles)+"_delay_"+str(args.delay)+"_freq_"+str(args.eesFrequency)+"_single_firingRates.pdf")
+	fig, ax = plt.subplots(2, 6,figsize=(16,9))
+	cmap = plt.get_cmap('autumn')
+	colors = cmap(np.linspace(0.1,0.9,len(eesAmplitudes)))
+	bar_width = 5
+
+	for i,eesAmplitude in enumerate(eesAmplitudes):
+		if eesAmplitude[0]=="%": eesAmplitudeName=eesAmplitude[1:]
+		else: eesAmplitudeName=eesAmplitude
+		if not args.phasicStim: name = "Tonic_FFS_species_"+toAddname+inputFileName+args.species+"_muscles_"+"".join(muscles)+"_delay_"+str(args.delay)+"_amp_"+str(eesAmplitudeName)+"_freq_"+str(args.eesFrequency)
+		else: name = "Phasic_"+emgVsKinMod+"_FFS_species_"+toAddname+inputFileName+args.species+"_muscles_"+"".join(muscles)+"_delay_"+str(args.delay)+"_amp_"+str(eesAmplitudeName)+"_freq_"+str(args.eesFrequency)
+		if args.species == "human":name += hp.get_dataset()
+
+		# get data
+		resultFile = gt.find("*"+name+".p",pathToResults)
+		if len(resultFile)>1: print "Warning: multiple result files found!!!"
+		with open(resultFile[0], 'r') as pickle_file:
+			estimatedEmg = pickle.load(pickle_file)
+			meanFr = pickle.load(pickle_file)
+
+		# compute stats
+		iaIntModDepth = {}
+		activeMnFr={}
+		for muscle in muscles:
+			iaIntModDepth[muscle]=[]
+			activeMnFr[muscle]=[]
+		for j in xrange(len(heelStrikeSamples)-1):
+			if heelStrikeSamples[j+1]>nSamples-50: break
+			if heelStrikeSamples[j]<50:continue # to skip artefacts
+			for muscle in muscles:
+				iaIntModDepth[muscle].append(\
+					meanFr[muscle]['IaInt'][heelStrikeSamples[j]:heelStrikeSamples[j+1]].max()-meanFr[muscle]['IaInt'][heelStrikeSamples[j]:heelStrikeSamples[j+1]].min())
+				mnActivityDuringCycle = meanFr[muscle]['Mn'][heelStrikeSamples[j]:heelStrikeSamples[j+1]]
+				activeMnFr[muscle].append(\
+					mnActivityDuringCycle[mnActivityDuringCycle>=0.8*mnActivityDuringCycle.max()].mean())
+					# mnActivityDuringCycle[mnActivityDuringCycle>=1.5*mnActivityDuringCycle.std()].mean())
+					# mnActivityDuringCycle[mnActivityDuringCycle>=np.percentile(mnActivityDuringCycle,90)].mean())
+		iaIntModDepthStats = {}
+		activeMnFrStats = {}
+		for muscle in muscles:
+			iaIntModDepthStats[muscle] = {"mean":np.mean(iaIntModDepth[muscle]),
+				"sem":np.std(iaIntModDepth[muscle])/(np.sqrt(len(iaIntModDepth[muscle])-1))}
+			activeMnFrStats[muscle] = {"mean":np.mean(activeMnFr[muscle]),
+				"sem":np.std(activeMnFr[muscle])/(np.sqrt(len(activeMnFr[muscle])-1))}
+
+		# get gait cycles to plot
+		if not 'startPlot' in locals():
+			startPlot = heelStrikeSamples[startGaitCycleN-1]
+			stopPlot = heelStrikeSamples[startGaitCycleN+nCycles-1]
+			if stopPlot>nSamples: stopPlot=nSamples
+			reducedSamples = range(stopPlot-startPlot)
+			reducedStance = stance[startPlot:stopPlot]
+
+		eesAmplitude = int(eesAmplitude)
+		for j,muscle in enumerate(muscles):
+			ax[j,0].plot(meanFr[muscle]['Iaf'][startPlot:stopPlot],color=colors[i])
+			ax[j,0].fill_between(reducedSamples, 0, 200, where=reducedStance, facecolor='#b0abab', alpha=0.25)
+			ax[j,1].plot(meanFr[muscle]['IaInt'][startPlot:stopPlot],color=colors[i])
+			ax[j,1].fill_between(reducedSamples, 0, 250, where=reducedStance, facecolor='#b0abab', alpha=0.25)
+			ax[j,2].bar(eesAmplitude,iaIntModDepthStats[muscle]["mean"],bar_width,yerr=iaIntModDepthStats[muscle]["sem"],\
+				color=colors[i],error_kw=errParams)
+			xValsScatter = np.linspace(0,bar_width*0.9,len(iaIntModDepth[muscle]))+eesAmplitude-bar_width*0.45
+			ax[j,2].scatter(xValsScatter,iaIntModDepth[muscle], marker='o',edgecolor='black', linewidth='0.1', color="#dddde3", s=7, zorder=3, alpha=0.7)
+			ax[j,3].plot(meanFr[muscle]['Mn'][startPlot:stopPlot],color=colors[i])
+			ax[j,3].fill_between(reducedSamples, 0, 40, where=reducedStance, facecolor='#b0abab', alpha=0.25)
+			ax[j,4].bar(eesAmplitude,activeMnFrStats[muscle]["mean"],bar_width,yerr=activeMnFrStats[muscle]["sem"],\
+				color=colors[i],error_kw=errParams)
+			ax[j,4].scatter(xValsScatter,activeMnFr[muscle], marker='o',edgecolor='black', linewidth='0.1', color="#dddde3", s=7, zorder=3, alpha=0.7)
+			ax[j,5].plot(estimatedEmg[muscle]['Mn'][startPlot:stopPlot],color=colors[i])
+			ax[j,5].fill_between(reducedSamples, -50, 50, where=reducedStance, facecolor='#b0abab', alpha=0.25)
+
+	for j,muscle in enumerate(muscles):
+		ax[j,0].set_ylim([0,200])
+		ax[j,0].set_title("Ia fibers firing rate - "+muscle)
+		ax[j,0].set_xlabel("Time (ms)")
+		ax[j,0].set_ylabel("Firing rate (Imp/s)")
+		ax[j,1].set_ylim([0,250])
+		ax[j,1].set_title("IaInt firing rate - "+muscle)
+		ax[j,1].set_xlabel("Time (ms)")
+		ax[j,1].set_ylabel("Firing rate (Imp/s)")
+		ax[j,2].set_ylim([0,250])
+		ax[j,2].set_title("Mean IaInr modulation depth")
+		ax[j,2].set_xlabel("Stimulation amplitude (uA)")
+		ax[j,2].set_ylabel("Firing rate (Imp/s)")
+		ax[j,3].set_ylim([0,40])
+		ax[j,3].set_title("Mn firing rate - "+muscle)
+		ax[j,3].set_xlabel("Time (ms)")
+		ax[j,3].set_ylabel("Firing rate (Imp/s)")
+		ax[j,4].set_ylim([0,40])
+		ax[j,4].set_title("Mean Mn Fr while active")
+		ax[j,4].set_xlabel("Stimulation amplitude (uA)")
+		ax[j,4].set_ylabel("Firing rate (Imp/s)")
+		ax[j,5].set_ylim([-50,50])
+		ax[j,5].set_title("EMG - "+muscle)
+		ax[j,5].set_xlabel("Time (ms)")
+		ax[j,5].set_ylabel("Emg amplitude (a.u.)")
+	plt.savefig(pathToResults+figName, format="pdf",transparent=True)
+
+
+	# FIgure 2-7 plot
+	if args.species == "rat":
+		startGaitCycleN = 3
+		nCycles = 1
+	elif args.species == "human":
+		startGaitCycleN = 3
+		nCycles = 1
+
+	if not args.phasicStim: figName = time.strftime("/%Y_%m_%d_Tonic_FFS_species_"+toAddname+inputFileName+args.species+"_muscles_"+"".join(muscles)+"_delay_"+str(args.delay)+"_freq_"+str(args.eesFrequency)+"_afferentStats.pdf")
+	else: figName = time.strftime("/%Y_%m_%d_Phasic_FFS_species_"+toAddname+inputFileName+args.species+"_muscles_"+"".join(muscles)+"_delay_"+str(args.delay)+"_freq_"+str(args.eesFrequency)+"_afferentStats.pdf")
+	fig, ax = plt.subplots(2, 4,figsize=(16,9))
+	cmap = plt.get_cmap('autumn')
+	colors = cmap(np.linspace(0.1,0.9,len(eesAmplitudes)))
+	bar_width = 5
+
+	meanPerEraserApIaf = []
+	offsetMeanFr = 0
+	offsetMeanModDepth = 0
+
+	for i,eesAmplitude in enumerate(eesAmplitudes):
+		if eesAmplitude[0]=="%": eesAmplitudeName=eesAmplitude[1:]
+		else:
+			eesAmplitudeName=eesAmplitude
+			eesAmplitude = int(eesAmplitude)
+		if not args.phasicStim: name = "Tonic_FFS_species_"+toAddname+inputFileName+args.species+"_muscles_"+"".join(muscles)+"_delay_"+str(args.delay)+"_amp_"+str(eesAmplitudeName)+"_freq_"+str(args.eesFrequency)
+		else: name = "Phasic_"+emgVsKinMod+"_FFS_species_"+toAddname+inputFileName+args.species+"_muscles_"+"".join(muscles)+"_delay_"+str(args.delay)+"_amp_"+str(eesAmplitudeName)+"_freq_"+str(args.eesFrequency)
+		if args.species == "human":name += hp.get_dataset()
+
+		resultFile = gt.find("*"+name+".p",pathToResults)
+		if len(resultFile)>1: print "Warning: multiple result files found!!!"
+		with open(resultFile[0], 'r') as pickle_file:
+			estimatedEmg = pickle.load(pickle_file)
+			meanFr = pickle.load(pickle_file)
+			meanPerEraserApIaf.append(pickle.load(pickle_file))
+
+
+		# compute stats
+		iaModDepth = {}
+		iaMeanFr={}
+		for muscle in muscles:
+			iaModDepth[muscle]=[]
+			iaMeanFr[muscle]=[]
+		for j in xrange(len(heelStrikeSamples)-1):
+			if heelStrikeSamples[j+1]>nSamples-50: break
+			if heelStrikeSamples[j]<50:continue # to skip artefacts
+			for muscle in muscles:
+				iaModDepth[muscle].append(\
+					meanFr[muscle]['Iaf'][heelStrikeSamples[j]:heelStrikeSamples[j+1]].max()-meanFr[muscle]['Iaf'][heelStrikeSamples[j]:heelStrikeSamples[j+1]].min())
+				iaMeanFr[muscle].append(\
+					meanFr[muscle]['Iaf'][heelStrikeSamples[j]:heelStrikeSamples[j+1]].mean())
+		iaModDepthStats = {}
+		iaMeanFrStats = {}
+		for muscle in muscles:
+			iaModDepthStats[muscle] = {"mean":np.mean(iaModDepth[muscle]),
+				"sem":np.std(iaModDepth[muscle])/(np.sqrt(len(iaModDepth[muscle])-1))}
+			iaMeanFrStats[muscle] = {"mean":np.mean(iaMeanFr[muscle]),
+				"sem":np.std(iaMeanFr[muscle])/(np.sqrt(len(iaMeanFr[muscle])-1))}
+
+		# get gait cycles to plot
+		if not 'startPlot' in locals():
+			startPlot = heelStrikeSamples[startGaitCycleN-1]
+			stopPlot = heelStrikeSamples[startGaitCycleN+nCycles-1]
+			if stopPlot>nSamples: stopPlot=nSamples
+			reducedSamples = range(stopPlot-startPlot)
+			reducedStance = stance[startPlot:stopPlot]
+
+		for j,muscle in enumerate(muscles):
+
+			ax[j,0].plot(meanFr[muscle]['Iaf'][startPlot:stopPlot],color=colors[i])
+			ax[j,0].fill_between(reducedSamples, 0, 125, where=reducedStance, facecolor='#b0abab', alpha=0.25)
+			ax[j,1].bar(eesAmplitude,iaMeanFrStats[muscle]["mean"],bar_width,yerr=iaMeanFrStats[muscle]["sem"],\
+				color=colors[i],error_kw=errParams)
+			xValsScatter = np.linspace(0,bar_width*0.9,len(iaMeanFr[muscle]))+eesAmplitude-bar_width*0.45
+			ax[j,1].scatter(xValsScatter,iaMeanFr[muscle], marker='o',edgecolor='black', linewidth='0.1', color="#dddde3", s=7, zorder=3, alpha=0.7)
+			ax[j,2].bar(eesAmplitude,iaModDepthStats[muscle]["mean"],bar_width,yerr=iaModDepthStats[muscle]["sem"],\
+				color=colors[i],error_kw=errParams)
+			ax[j,2].scatter(xValsScatter,iaModDepth[muscle], marker='o',edgecolor='black', linewidth='0.1', color="#dddde3", s=7, zorder=3, alpha=0.7)
+			ax[j,3].bar(eesAmplitude,meanPerEraserApIaf[-1],5,color=colors[i])
+
+			ax[j,0].set_ylim([0,80])
+			ax[j,0].set_title("Ia fibers firing rate - "+muscle)
+			ax[j,0].set_xlabel("Time (ms)")
+			ax[j,0].set_ylabel("Firing rate (Imp/s)")
+			ax[j,1].set_ylim([0,60])
+			ax[j,1].set_title("Mean Ia firing rate ")
+			ax[j,1].set_xlabel("Stimulation amplitude (uA)")
+			ax[j,1].set_ylabel("(imp/s)")
+			ax[j,2].set_ylim([0,80])
+			ax[j,2].set_title("modulation depth")
+			ax[j,2].set_xlabel("Stimulation amplitude (uA)")
+			ax[j,2].set_ylabel("(imp/s)")
+			ax[j,3].set_ylim([0,100])
+			ax[j,3].set_title("Percentage erased APs")
+			ax[j,3].set_xlabel("Stimulation frequency (Hz)")
+			ax[j,3].set_ylabel("Percentage")
+	plt.savefig(pathToResults+figName, format="pdf",transparent=True)
+
+if __name__ == '__main__':
+	main()

@@ -1,0 +1,25 @@
+<DigitalDevices>
+	<DeviceDefinition manufacturer="prophysics" type="TwinCat Analog Reader Device" version="1.0" description="Device for streaming data from a TwinCat server." manual-instantiation-text="Add TwinCat server">
+		<Parameter name="SampleRate" display-name="Sample Rate (Hz)" description="The number of samples produced per component per second." group="General" persistent="true" change-group-key="0">
+			<InitialValue type="Double" value="1000" min-value="10" max-value="10000"/>
+		</Parameter>
+		<Output name="TwinCat AI" quantity="ElectricPotential">
+			<Component name="MAIN.R_FXA"/>
+			<Component name="MAIN.R_FXD"/>
+			<Component name="MAIN.R_FYA"/>
+			<Component name="MAIN.R_FYD"/>
+			<Component name="MAIN.R_FZA"/>
+			<Component name="MAIN.R_FZD"/>
+			<Component name="MAIN.R_ISTN"/>
+			<Component name="MAIN.R_POS_R"/>
+			<Component name="MAIN.R_POS_X"/>
+			<Component name="MAIN.R_POS_Y"/>
+			<Component name="MAIN.R_POS_Z"/>
+			<Component name="MAIN.R_RT_L"/>
+			<Component name="MAIN.R_RT_R"/>
+			<Component name="MAIN.R_RT_W"/>
+			<Component name="MAIN.R_TN_W"/>
+		</Output>
+	</DeviceDefinition>
+</DigitalDevices>
+

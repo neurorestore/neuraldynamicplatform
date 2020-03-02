@@ -1,0 +1,11 @@
+// Parallel hoc Code from neuron-python <--- Most used
+cd NeuralNetwork/hoc_files
+mpiexec -np 4 nrniv -mpi -python ../python_files/runSingleSimulation.py 
+
+// Parallel Code from python
+cd NeuralNetwork/hoc_files
+mpiexec -np 4 ipython -i ../python_files/runSingleSimulation.py 
+
+// parallel in different machines
+cd nrn/src/parallel/
+mpiexec -np 4 nrniv -mpi test0.hoc 

@@ -1,0 +1,121 @@
+# [SECTION 1]:  Muscles names + delay for afferent fibers (optional)
+@1
+# hip flexor
+RIGHT_HF 8
+LEFT_HF 8
+
+# hip extensor
+RIGHT_GLU 8
+LEFT_GLU 8
+
+# Knee extensor
+RIGHT_VAS 12
+LEFT_VAS 12
+
+# Knee flexor
+RIGHT_HAM 12
+LEFT_HAM 12
+
+# Ankle extensor
+RIGHT_GAS 16
+RIGHT_SOL 16
+LEFT_GAS 16
+LEFT_SOL 16
+
+# Ankle flexor
+RIGHT_TA 16
+LEFT_TA 16
+
+
+
+# [SECTION 2]: Common Cells per muscle: cellClass - name - number - required cell inputs (The name depend on the cell class; Motoneuron class - MnReal name, IntFireMn class - Mn name, AfferentFiber class - I... name for primary and II.. name for sencondary fibers, IntFire class - any name)
+@2
+IntFireMn Mn 169
+AfferentFiber Iaf 60
+AfferentFiber IIf 60
+IntFire IaInt 196
+IntFire IIExInt 196
+
+
+
+
+
+# [SECTION 3]: Special Cells per muscle or not muscle related (optional): muscle/groupName - cellClass - name - number - required cell inputs
+@3
+
+
+
+
+
+# [SECTION 4]: Common Network Connections, equal in each muscle: fromPopulation - toSingleCell - ratio - number - weight - typeOfSynapse (If toSingleCell is a real cell then typeOfSynapse can be either "inhibitory" or "excitatory", if toSingleCell is an artficialCell then typeOfSynapse has to be "artificial".)
+# Reminder: in ~rats from Harrison et al 1981 EPSP on MN due to Iaf is clearly related to the motor unit mechanical properties and he found that the EPSPs due to a single Iaf are: - 212uV for type S units - 126uV for type FR units - 52uV for type FF units. From Kanda et al 1992 the rat gastrocnemius is composed by: 17% of S types units, 48% of FR types units and 35% of FF types units. Assuming a dV of 8mv as threhsold for the Mn to fire (data coming from realisctic model) an epsp is about (2.65%,1.58%,0.65% - mean 1.4%) of the threhsold. To moltiply by 1.28 to mimick the heterogeneous contribution. While ex coming from the IIExInt is about 1/3 - mean is 0.014*60/116=.007. IPSP = -3mV ~ ].
+@4
+Iaf Mn unique 60 0.02 artificial
+Iaf IaInt random 62 __weight_1 artificial
+IIf IIExInt random 62 __weight_1 artificial
+IIf IaInt random 62 __weight_1 artificial
+IIExInt Mn random 116 0.007 artificial
+
+
+
+
+
+# [SECTION 5]: Inter-muscles sensorimotor pathways
+@5
+
++Inhibitory proprioceptive pathway
+
+Connections:
+M1 IaInt M2 IaInt random 100 __weight_2 artificial
+M1 IaInt M2 Mn random 232 -0.002 artificial
+
+
+WeightsMatrix:
+HeaderRowAndColumn M2-RIGHT_HF  M2-LEFT_HF  M2-RIGHT_GLU    M2-LEFT_GLU     M2-RIGHT_VAS    M2-LEFT_VAS  M2-RIGHT_HAM   M2-LEFT_HAM     M2-RIGHT_GAS    M2-RIGHT_SOL    M2-LEFT_GAS  M2-LEFT_SOL    M2-RIGHT_TA     M2-LEFT_TA
+M1-RIGHT_HF        0            0           1               0               0               0            0              0               0               0               0            0              0               0
+M1-LEFT_HF         0            0           0               1               0               0            0              0               0               0               0            0              0               0
+M1-RIGHT_GLU       1            0           0               0               0               0            0              0               0               0               0            0              0               0
+M1-LEFT_GLU        0            1           0               0               0               0            0              0               0               0               0            0              0               0
+M1-RIGHT_VAS       0            0           0               0               0               0            1              0               0               0               0            0              0               0
+M1-LEFT_VAS        0            0           0               0               0               0            0              1               0               0               0            0              0               0
+M1-RIGHT_HAM       0            0           0               0               1               0            0              0               0               0               0            0              0               0
+M1-LEFT_HAM        0            0           0               0               0               1            0              0               0               0               0            0              0               0
+M1-RIGHT_GAS       0            0           0               0               0               0            0              0               0               0               0            0              0.5             0
+M1-RIGHT_SOL       0            0           0               0               0               0            0              0               0               0               0            0              0.5             0
+M1-LEFT_GAS        0            0           0               0               0               0            0              0               0               0               0            0              0               0.5
+M1-LEFT_SOL        0            0           0               0               0               0            0              0               0               0               0            0              0               0.5
+M1-RIGHT_TA        0            0           0               0               0               0            0              0               1               1               0            0              0               0
+M1-LEFT_TA         0            0           0               0               0               0            0              0               0               0               1            1              0               0
+
+
++Monosynaptic Heteronymous connections (Iaf)
+
+Connections:
+M1 Iaf M2 Mn random 60 0.02 artificial
+
+
+WeightsMatrix:
+HeaderRowAndColumn M2-RIGHT_HF  M2-LEFT_HF  M2-RIGHT_GLU    M2-LEFT_GLU     M2-RIGHT_VAS    M2-LEFT_VAS  M2-RIGHT_HAM   M2-LEFT_HAM     M2-RIGHT_GAS    M2-RIGHT_SOL    M2-LEFT_GAS  M2-LEFT_SOL    M2-RIGHT_TA     M2-LEFT_TA
+M1-RIGHT_HF        0            0           0               0               0               0            0              0               0.83            0.70            0            0              0.79            0
+M1-LEFT_HF         0            0           0               0               0               0            0              0               0               0               0.83         0.70           0               0.79
+M1-RIGHT_GLU       0            0           0               0               0               0            0              0               0.83            0.70            0            0              0.79            0
+M1-LEFT_GLU        0            0           0               0               0               0            0              0               0               0               0.83         0.70           0               0.79
+M1-RIGHT_VAS       0            0           0               0               0               0            0              0               0.83            0.70            0            0              0.79            0
+M1-LEFT_VAS        0            0           0               0               0               0            0              0               0               0               0.83         0.70           0               0.79
+M1-RIGHT_HAM       0            0           0               0               0               0            0              0               0.08            0               0            0              0               0
+M1-LEFT_HAM        0            0           0               0               0               0            0              0               0               0               0.08         0              0               0
+M1-RIGHT_GAS       0.26         0           0.26            0               0.26            0            0.72           0               0               0               0            0              0               0
+M1-RIGHT_SOL       0.51         0           0.51            0               0.51            0            0.46           0               0.69            0               0            0              0               0
+M1-LEFT_GAS        0            0.26        0               0.26            0               0.26         0              0.72            0               0               0            0              0               0
+M1-LEFT_SOL        0            0.51        0               0.51            0               0.51         0              0.46            0               0               0.69         0              0               0
+M1-RIGHT_TA        0            0           0               0               0               0            0.18           0               0.29            0               0            0              0               0
+M1-LEFT_TA         0            0           0               0               0               0            0              0.18            0               0.29            0            0              0               0
+
+
+# [SECTION 6]: Special network connections (optional): muscle/groupName - fromPopulation - muscle - toSingleCell - ratio - number - weight -type
+@6
+
+
+
+
+#end

@@ -1,0 +1,225 @@
+
+class NeuralNetwork
+public NeuralNetwork(NuronOnj parallelContext, string inputFile);
+public ~NeuralNetwork();
+protected void _read();
+protected void _initDictionaries();
+protected void _createCells();
+protected void _connect(list sourcesId,list targetsId,string conRatio,int conNum,int conWeight,string synType,int conDelay);
+protected void _connectCellsWithinDofs();
+protected void _connectCellsBetweenDofs();
+public void update_afferents_ap(float time);
+public void set_afferents_fr(dictionary fr);
+public list get_afferents_names();
+public list get_primary_afferents_names();
+public list get_secondary_afferents_names();
+public list get_real_motoneurons_names();
+public list get_intf_motoneurons_names();
+public list get_motoneurons_names();
+public list get_interneurons_names();
+public list get_mn_info();
+protected NeuronObj _pc;
+public bool recordMotoneurons;
+public bool recordAfferents;
+public bool recordIntFire;
+protected list _realMotoneuronsNames;
+protected list _intMotoneuronsNames;
+protected list _motoneuronsNames;
+protected list _primaryAfferentsNames;
+protected list _secondaryAfferentsNames;
+protected list _afferentsNames;
+protected list _interNeuronsNames;
+protected list _connections;
+protected list _infoDof;
+protected list _infoCells;
+protected list _infoWithinDofConnections;
+protected list _infoBetweenDofConnections;
+public dictionary actionPotentials;
+public dictionary cellsId;
+public dictionary cells;
+
+
+class EES
+public EES(NuronOnj parallelContext,NeuralNetwork nn, int frequency, int amplitude);
+public ~EES();
+protected void _load_rec_data();
+protected void _connect(list targetsId,string cellType,list netconList);
+protected _connect_to_network();
+protected _activate_connections(list netcons, float percentage);
+public void set_amplitude(int amplitude);
+public void set_frequency(int frequency);
+public touple get_amplitude();
+public int get_frequency();
+protected NeuronObj _pc;
+protected NeuralNetwork _nn;
+protected int _eesId;
+protected dictionary _connections;
+protected int _maxFrequency;
+protected int _current;
+protected float _percIf;
+protected float _percIIf;
+protected float _percMn;
+protected NeuronObj _stim ;
+protected list _If;
+protected list _IIf;
+protected list _Mn;
+protected list _recruitedCells;
+protected int _minCur;
+protected int _maxCur;
+protected int _frequency; 
+
+class Simulation
+public Simulation(NuronOnj parallelContext);
+public ~Simulation();
+private void __check_parameters();
+protected float _get_tstop();
+protected void _set_tstop(float tstop);
+protected float _get_integration_step();
+protected void _set_integration_step(float dt);
+protected void _initialize();
+protected void _integrate();
+protected void _update();
+protected float _get_print_period();
+protected void _set_print_period(float t);
+protected void _print_sim_status();
+protected void _end_integration();
+public void run();
+public void save_results();
+public void plot();
+private NeuronObj _pc;
+private float __maxStep;
+private float __tstop;
+private float __integrationStep;
+public float simulationTime;
+private float __tPrintInfo;
+private float __printPeriod;
+protected string _resultsFolder;
+
+class CollisionEesNatural(Simulation)
+public CollisionEesNatural(NuronOnj parallelContext, list eesFr, list fiberDelays, list fiberFr);
+public ~CollisionEesNatural();
+protected void _initLists();
+protected void _create_fibers();
+protected void _create_ees_objects();
+protected void _connect_ees_to_fibers();
+protected void _update_afferents();
+protected void _extract_results();`
+protected list _eesFrequencies;
+protected list _fiberDelays;
+protected list _fiberFiringRates;
+protected list _fiberList;
+protected list _netconList ;
+protected list _eesList;
+protected list _results;
+
+class MyelinatedAfferentStimulation(Simulation)
+public MyelinatedAfferentStimulation(NuronOnj parallelContext, int tstop, string fiberType);
+public ~MyelinatedAfferentStimulation();
+public void attach_current_clamp(NeuronObj segment, float amp, float delay, float dur);
+public void attach_netstim(NeuronObj segment,int stimFreq ,int nPulses, float delay);
+protected list _syn;
+protected list _stim;
+protected list _netcons;
+protected numpyArray _membranPot;
+protected int _count;
+
+class ForwardSimulation(Simulation)
+public ForwardSimulation(NuronOnj parallelContext, NeuralNetwork nn, dictionary afferentInput, EES stim, float tstop);
+public ~ForwardSimulation();
+protected void _init_afferents_fr();
+protected void _set_afferents_fr(int i);
+protected void _extract_results();
+protected void _get_perc_aff_ap_erased(string cellName);
+protected NeuralNetwork _nn;
+protected EES _ees;
+protected dictionary _afferentInput;
+protected float _dtUpdateAfferent;
+protected int _timeUpdateAfferents;
+protected int _inputDuration;
+protected dictionary _afferentFr;
+protected dictionary _meanFr;
+protected dictionary _estimatedEMG;
+
+class Cell
+public Cell();
+public ~Cell();
+public void connect_to_target(NeuronObj target,float weight, float delay);
+public int isArtificial();
+public int getNinstances();
+public string name;
+public NeuronObj cell;
+
+class AfferentFiber(Cell)
+public AfferentFiber(int delay);
+public ~AfferentFiber();
+protected _setDelay(int delay);
+public set_firing_rate(int fr);
+protected _updateEES(float time);
+protected _updateNatural(float time);
+public update(float time);
+public int get_delay();
+public touple get_stats();
+public int getNinstances();
+public int get_update_period();
+public int _initLists
+get_ees_weight();
+public int get_max_ees_frequency();
+private int __nFibers;
+private int __updatePeriod;
+private int __eesWeight;
+private int __maxEesFrequency;
+protected int _interval;
+protected float _lastSpikeTime;
+protected int maxFiringRate;
+protected list _naturalSpikes;
+protected list _eesSpikes;
+protected float _fire;
+protected int _nCollisions;
+protected int _nNaturalSent;
+protected int _nNaturalArrived;
+
+class IntFire(Cell)
+public IntFire();
+public ~IntFire();
+public int getNinstances();
+
+
+class MyelinatedFiber(Cell) 
+public MyelinatedFiber(int length, int diameter);
+public ~MyelinatedFiber();
+protected void _createSections();
+protected void _buildTopology();
+protected void _defineBiophysics();
+protected float _diameterParanode;
+protected float _diameterNode;
+protected float _lengthNode;
+protected float _lengthParanode;
+protected float nNodes;
+protected NeuronObj node;
+protected NeuronObj paranode;
+
+
+class MotoneuronReal(Cell)
+public MotoneuronReal(bool drug);
+public ~MotoneuronReal();
+protected void _createSections();
+protected void _defineBiophysics();
+protected void _buildTopology();
+public void create_synapse(string type);
+public int getNinstances();
+public int _initLists
+get_ees_weight();
+private int __nMneurons;
+private int __eesWeight;
+protected bool _drug;
+protected list synapses;
+protected int _nNodes;
+protected int _nDendrites;
+protected float _diamAxon;
+protected list _diamDend;
+protected list _lengthDend;
+protected NeuronObj soma;
+public NeuronObj dendrite;
+public NeuronObj initSegment;
+public NeuronObj node;
+public NeuronObj paranode;

@@ -1,0 +1,8 @@
+The extracted data comes from the HuMoD database and the OpenSim gait 2354 standard model.
+I first used the subject B 1.1/1.3 data to create a mot file. Then, I used the mot file to extract the desired muscle lengths during locomotion.
+EMG and kinematic data from the database were used to estimate the firing rate of Ia/II fibers.
+
+Note: the osim model that comes with the HuMoD database seems to have some problem with opensim..
+That's why I used the standard opensim model.
+
+Note 2: there is a second database (GIL) that might be useful for biomechanical simulations.

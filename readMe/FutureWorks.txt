@@ -1,0 +1,64 @@
+Future work to do:
+
+- Integrate the eterogeneus synapses from different muscles SOL Iaf --> MG Mn etc
+- Devide the Motorneuron in thre different groups S FF FR and maybe change their properties (Force gen, EMG gen)
+
+-Complete model +muscles and ms model
+- Model on tapis roullant
+
+Next Paper:
+- Parameters tuning
+- Modulation early response (low/high freq  -> inhibition)
+- Effect of low vs high freq stim on MN (low freq -> high peaks and same freq MNvsEES, high freq -> low peaks, more fr and differetn freq MNvsEES)
+
+
+// Update 8 march 20015
+
+- learning:
+	1) model learning from Ziegler et al 2015
+	2) implement all Mn and correct EPSP -> EES is not sufficient
+	3) show how learning with the current experimentals setups works (increase EPSP iaf mn)
+	4) show that with increased EPSP EES works
+
+	5) Design the optimal experimental setup to boost learning!
+	6) Test it 
+	7) BOOOOOOOOOOMM
+
+- complete closed loop model
+	1) add other muscles
+	2) test locomotion over treadmil with given network type (Ia II)
+	3) check other networks components Ib, RC, Mechanorecepotors foot!
+	4) Make it work..
+
+	5) Parameter search of EES -- optimal parameters...
+	6) Effect of drugs
+	7) Show that the alternation works only if there is no big difference between the number of Ia f activated wrt flexors/extensor 
+
+- test the behaviour of the Mn with EES at low fre (16/22 Hz) --> vedi paper revisionato da marco
+
+// Update 31 march 20015
+
+- complete closed loop model
+	1) add other muscles
+	2) test locomotion over treadmil with given network type (Ia II)
+	3) check other networks components Ib, RC, Mechanorecepotors foot!
+	4) Make it work..
+
+	5) Parameter search of EES -- optimal parameters...
+
+- learning:
+	1) model learning from Ziegler et al 2015
+	2) implement all Mn and correct EPSP -> EES is not sufficient
+	3) show how learning with the current experimentals setups works (increase EPSP iaf mn)
+	4) show that with increased EPSP EES works
+
+	5) Design the optimal experimental setup to boost learning!
+	6) Test it 
+	7) BOOOOOOOOOOMM
+
+- test the behaviour of the Mn with EES at low fre (16/22 Hz) --> vedi paper revisionato da marco
+
+// Add
+show that the number of iaf for flexors and extensor should be similar otherwise no alternation
+
+
